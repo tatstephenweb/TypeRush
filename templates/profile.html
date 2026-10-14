@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Profile - TypeRush{% endblock %}
+{% block content %}
+<h1 class="font-display text-4xl font-extrabold text-white">Your profile</h1>
+<div class="mt-6 grid gap-6 md:grid-cols-3">
+  <div class="card h-fit text-center">
+    <div id="avatarBox" class="flex justify-center"></div>
+    <label class="mt-4 inline-block cursor-pointer rounded-lg border border-edge px-4 py-1.5 text-sm text-mute hover:text-white">
+      Change picture<input id="file" form="form" type="file" name="avatar" accept="image/png,image/jpeg,image/gif,image/webp" class="hidden">
+    </label>
+    <p class="mt-1 text-xs text-mute">PNG, JPG, GIF or WEBP, up to 2 MB</p>
+    <div class="mt-6 grid grid-cols-2 gap-3 text-left">
+      {% for label, value in [("Points", user.points), ("Rank", ('#' ~ rank) if rank else '-'), ("Best WPM", user.best_wpm), ("Games", user.games_played)] %}
+      <div class="rounded-lg border border-edge p-3"><p class="text-sm text-mute">{{ label }}</p><p class="font-display text-2xl font-bold text-white">{{ value }}</p></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <form id="form" class="card space-y-4 md:col-span-2">
+    <div id="msg" class="hidden"></div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div><label class="lbl" for="username">Username</label><input id="username" name="username" value="{{ user.username }}" class="inp" required minlength="3" maxlength="20"></div>
+      <div><label class="lbl" for="email">Email</label><input id="email" name="email" type="email" value="{{ user.email }}" class="inp" required></div>
+      <div><label class="lbl" for="age">Age</label><input id="age" name="age" type="number" min="5" max="120" value="{{ user.age }}" class="inp" required></div>
+      <div><label class="lbl" for="gender">Gender</label>
+        <select id="gender" name="gender" class="inp">{% for g in genders %}<option {{ 'selected' if g == user.gender }}>{{ g }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="border-t border-edge pt-4">
+      <p class="mb-3 font-semibold text-white">Change password</p>
+      <p class="mb-3 text-sm text-mute">Leave these empty to keep your current password.</p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div><label class="lbl" for="current_password">Current password</label><input id="current_password" name="current_password" type="password" class="inp" autocomplete="current-password"></div>
+        <div><label class="lbl" for="new_password">New password</label><input id="new_password" name="new_password" type="password" class="inp" minlength="6" autocomplete="new-password"></div>
+      </div>
+    </div>
+    <button type="submit" class="btn sm:!w-auto sm:px-8">Save changes</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const form = document.getElementById("form"), msg = document.getElementById("msg"), box = document.getElementById("avatarBox");
+const SIZE = "h-28 w-28 text-4xl";
+box.innerHTML = avatarHTML({{ avatar|tojson }}, {{ user.username|tojson }}, SIZE);
+document.getElementById("file").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) box.innerHTML = avatarHTML(URL.createObjectURL(file), "?", SIZE);
+});
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = form.querySelector("button[type=submit]"); btn.disabled = true;
+  const { ok, data } = await api("/api/profile", { method: "POST", body: new FormData(form) });
+  if (ok) { showMessage(msg, data.message, true); setTimeout(() => location.reload(), 900); }
+  else { showMessage(msg, data.error); btn.disabled = false; }
+});
+</script>
+{% endblock %}

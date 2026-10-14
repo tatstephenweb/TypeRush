@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TypeRush{% endblock %}</title>
+  <meta name="theme-color" content="#0C1B24">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TypeRush">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: {
+      colors: { ink: "#0C1B24", panel: "#12303D", edge: "#1F4A5A", mute: "#8FA9B3", amber: "#FFB547", coral: "#FF6B5A" },
+      fontFamily: { display: ["Bricolage Grotesque", "system-ui", "sans-serif"], mono: ["JetBrains Mono", "ui-monospace", "monospace"] }
+    } } };
+  </script>
+  <style type="text/tailwindcss">
+    @layer components {
+      .inp { @apply w-full rounded-lg border border-edge bg-ink px-3 py-2.5 text-white placeholder-mute/60 outline-none focus:border-amber focus:ring-2 focus:ring-amber/30; }
+      .btn { @apply w-full rounded-lg bg-amber px-4 py-2.5 font-semibold text-ink transition hover:brightness-110 disabled:opacity-50; }
+      .lbl { @apply mb-1 block text-sm text-mute; }
+      .card { @apply rounded-xl border border-edge bg-panel/50 p-6; }
+    }
+  </style>
+  <style>
+    .caret { box-shadow: inset 2px 0 0 #FFB547; animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { box-shadow: none; } }
+    @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+  </style>
+</head>
+<body class="min-h-screen bg-ink text-slate-200 antialiased">
+{% macro avatar_img(u, size="h-9 w-9") %}
+  {% if u.avatar %}<img src="{{ url_for('avatar_image', user_id=u.id, v=u.avatar) }}" alt="" class="{{ size }} rounded-full object-cover">
+  {% else %}<div class="{{ size }} flex items-center justify-center rounded-full bg-amber font-display font-bold text-ink">{{ u.username[0]|upper }}</div>{% endif %}
+{% endmacro %}
+{% if user %}
+{% set links = [("/game", "Play"), ("/leaderboard", "Leaderboard"), ("/profile", "Profile")] %}
+<header class="sticky top-0 z-30 border-b border-edge bg-ink/90 backdrop-blur">
+  <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+    <a href="/game" class="font-display text-2xl font-extrabold text-white">Type<span class="text-amber">Rush</span></a>
+    <nav class="hidden gap-6 sm:flex">
+      {% for href, label in links %}<a href="{{ href }}" class="text-sm font-medium {{ 'text-amber' if request.path == href else 'text-mute hover:text-white' }}">{{ label }}</a>{% endfor %}
+    </nav>
+    <div class="flex items-center gap-3">
+      <a href="/profile" aria-label="Profile">{{ avatar_img(user) }}</a>
+      <button id="installBtn" class="hidden rounded-lg border border-amber px-3 py-1 text-sm font-semibold text-amber hover:bg-amber/10">Install app</button>
+      <a href="/logout" class="text-sm text-mute hover:text-white">Log out</a>
+    </div>
+  </div>
+  <nav class="flex justify-around border-t border-edge py-2 sm:hidden">
+    {% for href, label in links %}<a href="{{ href }}" class="text-sm font-medium {{ 'text-amber' if request.path == href else 'text-mute' }}">{{ label }}</a>{% endfor %}
+  </nav>
+</header>
+{% endif %}
+<main class="mx-auto max-w-5xl px-4 py-8">{% block content %}{% endblock %}</main>
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

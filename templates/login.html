@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Log in - TypeRush{% endblock %}
+{% block content %}
+<div class="mx-auto mt-8 max-w-md">
+  <h1 class="font-display text-5xl font-extrabold leading-tight text-white">Type fast.<br>Climb the board.</h1>
+  <p class="mt-3 text-mute">Log in to play and track your points.</p>
+  <form id="form" class="card mt-8 space-y-4">
+    <div id="msg" class="hidden"></div>
+    <div><label class="lbl" for="identifier">Username or email</label><input id="identifier" name="identifier" class="inp" required autocomplete="username"></div>
+    <div><label class="lbl" for="password">Password</label><input id="password" name="password" type="password" class="inp" required autocomplete="current-password"></div>
+    <button class="btn">Log in</button>
+    <p class="text-center text-sm text-mute">New here? <a href="/register" class="font-semibold text-amber hover:underline">Create an account</a></p>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const form = document.getElementById("form"), msg = document.getElementById("msg");
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = form.querySelector("button"); btn.disabled = true;
+  const { ok, data } = await postJSON("/api/login", Object.fromEntries(new FormData(form)));
+  if (ok) window.location = "/game";
+  else { showMessage(msg, data.error); btn.disabled = false; }
+});
+</script>
+{% endblock %}

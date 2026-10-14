@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Create account - TypeRush{% endblock %}
+{% block content %}
+<div class="mx-auto mt-4 max-w-md">
+  <h1 class="font-display text-4xl font-extrabold text-white">Create your account</h1>
+  <p class="mt-2 text-mute">You can add a profile picture after signing up.</p>
+  <form id="form" class="card mt-6 space-y-4">
+    <div id="msg" class="hidden"></div>
+    <div><label class="lbl" for="username">Username</label><input id="username" name="username" class="inp" required minlength="3" maxlength="20" autocomplete="username"></div>
+    <div><label class="lbl" for="email">Email</label><input id="email" name="email" type="email" class="inp" required autocomplete="email"></div>
+    <div class="grid grid-cols-2 gap-4">
+      <div><label class="lbl" for="age">Age</label><input id="age" name="age" type="number" min="5" max="120" class="inp" required></div>
+      <div><label class="lbl" for="gender">Gender</label>
+        <select id="gender" name="gender" class="inp" required>{% for g in genders %}<option>{{ g }}</option>{% endfor %}</select></div>
+    </div>
+    <div><label class="lbl" for="password">Password</label><input id="password" name="password" type="password" class="inp" required minlength="6" autocomplete="new-password"></div>
+    <div><label class="lbl" for="confirm">Confirm password</label><input id="confirm" name="confirm" type="password" class="inp" required autocomplete="new-password"></div>
+    <button class="btn">Create account</button>
+    <p class="text-center text-sm text-mute">Already have an account? <a href="/login" class="font-semibold text-amber hover:underline">Log in</a></p>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const form = document.getElementById("form"), msg = document.getElementById("msg");
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(form));
+  if (body.password !== body.confirm) return showMessage(msg, "Passwords do not match.");
+  const btn = form.querySelector("button"); btn.disabled = true;
+  const { ok, data } = await postJSON("/api/register", body);
+  if (ok) window.location = "/game";
+  else { showMessage(msg, data.error); btn.disabled = false; }
+});
+</script>
+{% endblock %}

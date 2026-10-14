@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Play - TypeRush{% endblock %}
+{% block content %}
+<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+  {% for id, label, value in [("time", "Time left", "60"), ("wpm", "Words per minute", "0"), ("acc", "Accuracy", "100%"), ("points", "Your points", user.points)] %}
+  <div class="card !p-4"><p class="text-sm text-mute">{{ label }}</p>
+    <p id="{{ id }}" class="mt-1 font-display text-4xl font-bold {{ 'text-amber' if id == 'points' else 'text-white' }}">{{ value }}</p></div>
+  {% endfor %}
+</div>
+
+<div class="mt-6 flex items-center justify-between">
+  <div id="modes" class="flex gap-2">
+    <button data-sec="30">30 seconds</button><button data-sec="60">60 seconds</button>
+  </div>
+  <button id="restart" class="rounded-lg border border-edge px-4 py-1.5 text-sm text-mute hover:text-white">Restart</button>
+</div>
+
+<div class="card relative mt-4 !p-0">
+  <div id="text" class="relative m-5 h-[7.5rem] select-none overflow-hidden whitespace-pre-wrap break-words font-mono text-xl leading-10 sm:text-2xl"></div>
+  <input id="input" class="absolute inset-0 h-full w-full cursor-text opacity-0" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Type the text shown here">
+</div>
+<p class="mt-3 text-sm text-mute">Click the box and start typing. The timer starts with your first key.</p>
+
+<div id="result" class="card mt-6 hidden text-center"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const WORDS = ("the be to of and a in that have it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us keyboard speed practice focus rhythm window garden planet silver bridge market coffee travel simple strong quiet moment story answer learn build").split(" ");
+const textEl = document.getElementById("text"), input = document.getElementById("input"), result = document.getElementById("result");
+const modeButtons = document.querySelectorAll("#modes button");
+let target = "", duration = 60, startTime = 0, elapsed = 0, timer = null, started = false, finished = false;
+
+function makeText() {
+  const words = [];
+  for (let i = 0; i < 250; i++) words.push(WORDS[Math.floor(Math.random() * WORDS.length)]);
+  return words.join(" ");
+}
+
+function getStats() {
+  const typed = input.value;
+  let correct = 0;
+  for (let i = 0; i < typed.length; i++) if (typed[i] === target[i]) correct++;
+  const minutes = Math.max(elapsed, 1) / 60;
+  return { correct, total: typed.length,
+           wpm: started ? Math.round(correct / 5 / minutes) : 0,
+           accuracy: typed.length ? Math.round(correct / typed.length * 100) : 100 };
+}
+
+function paint() {
+  const typed = input.value, spans = textEl.children;
+  for (let i = 0; i < spans.length; i++) {
+    spans[i].className = i < typed.length
+      ? (typed[i] === target[i] ? "text-white" : "rounded bg-coral/25 text-coral")
+      : (i === typed.length ? "caret text-white" : "text-mute");
+  }
+  const current = spans[typed.length];
+  if (current) textEl.scrollTop = Math.max(0, current.offsetTop - 44);
+  const s = getStats();
+  document.getElementById("time").textContent = Math.max(0, Math.ceil(duration - elapsed));
+  document.getElementById("wpm").textContent = s.wpm;
+  document.getElementById("acc").textContent = s.accuracy + "%";
+}
+
+function reset() {
+  clearInterval(timer);
+  started = finished = false; elapsed = 0;
+  target = makeText();
+  textEl.innerHTML = [...target].map((c) => `<span>${c}</span>`).join("");
+  textEl.scrollTop = 0;
+  input.value = ""; input.disabled = false; input.focus();
+  result.classList.add("hidden");
+  modeButtons.forEach((b) => {
+    b.className = "rounded-lg px-4 py-1.5 text-sm font-semibold " +
+      (Number(b.dataset.sec) === duration ? "bg-amber text-ink" : "border border-edge text-mute hover:text-white");
+  });
+  paint();
+}
+
+function startTimer() {
+  started = true;
+  startTime = performance.now();
+  timer = setInterval(() => {
+    elapsed = (performance.now() - startTime) / 1000;
+    paint();
+    if (elapsed >= duration) finish();
+  }, 200);
+}
+
+async function finish() {
+  if (finished) return;
+  finished = true; clearInterval(timer); input.disabled = true;
+  elapsed = duration; paint();
+  const s = getStats();
+  const { ok, data } = await postJSON("/api/score", { correct_chars: s.correct, total_chars: s.total, seconds: duration });
+  result.classList.remove("hidden");
+  if (!ok) {
+    result.innerHTML = `<p class="text-coral">${esc(data.error || "Could not save your score.")}</p><button id="again" class="btn mt-4 !w-auto px-6">Try again</button>`;
+  } else {
+    document.getElementById("points").textContent = data.total_points;
+    const box = (label, value, cls = "text-white") => `<div class="rounded-lg border border-edge p-3"><p class="text-sm text-mute">${label}</p><p class="font-display text-3xl font-bold ${cls}">${value}</p></div>`;
+    result.innerHTML = `<h2 class="font-display text-2xl font-bold text-white">Time is up</h2>
+      <div class="mt-4 grid grid-cols-3 gap-3">${box("Words per minute", data.wpm)}${box("Accuracy", data.accuracy + "%")}${box("Points earned", "+" + data.points, "text-amber")}</div>
+      <p class="mt-4 text-mute">You now have ${data.total_points} points and rank #${data.rank}.</p>
+      <div class="mt-5 flex justify-center gap-3"><button id="again" class="btn !w-auto px-6">Play again</button>
+      <a href="/leaderboard" class="rounded-lg border border-edge px-6 py-2.5 font-semibold text-white hover:bg-white/5">Leaderboard</a></div>`;
+  }
+  document.getElementById("again").onclick = reset;
+}
+
+input.addEventListener("input", () => {
+  if (finished) return;
+  if (!started) startTimer();
+  paint();
+  if (input.value.length >= target.length) finish();
+});
+input.addEventListener("paste", (e) => e.preventDefault());
+document.getElementById("restart").onclick = reset;
+modeButtons.forEach((b) => b.onclick = () => { duration = Number(b.dataset.sec); reset(); });
+reset();
+</script>
+{% endblock %}

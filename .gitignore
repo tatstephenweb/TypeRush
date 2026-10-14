@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+typing.db
+.env
+.vercel/
+venv/
+.venv/
